@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -21,10 +21,20 @@ interface VerificationData {
   movieTime?: string;
 }
 
+const MUSIC_TRACKS = [
+  'https://cdn.poehali.dev/projects/d8db035b-4f3f-4320-946f-f65eee67ced7/bucket/Fiksaj_Vremya.mp3',
+  'https://cdn.poehali.dev/projects/d8db035b-4f3f-4320-946f-f65eee67ced7/bucket/Fiksaj_Mednyj_gorod.mp3',
+  'https://cdn.poehali.dev/projects/d8db035b-4f3f-4320-946f-f65eee67ced7/bucket/iksajj_NEVYNOSIMYJJ_80227348_V1.mp4',
+  'https://cdn.poehali.dev/projects/d8db035b-4f3f-4320-946f-f65eee67ced7/bucket/Фиксай моя жизнь моё шоу.MP3'
+];
+
 export default function Index() {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState('verify');
   const [step, setStep] = useState(1);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [currentTrack, setCurrentTrack] = useState(0);
+  const [volume, setVolume] = useState(0.2);
   
   const [formData, setFormData] = useState({
     name: '',
@@ -42,6 +52,38 @@ export default function Index() {
   const [checkCode, setCheckCode] = useState('');
   const [verifiedData, setVerifiedData] = useState<VerificationData | null>(null);
   const [verifications, setVerifications] = useState<VerificationData[]>([]);
+
+  useEffect(() => {
+    const audio = new Audio(MUSIC_TRACKS[currentTrack]);
+    audio.volume = volume;
+    audio.loop = false;
+    audioRef.current = audio;
+
+    audio.play().catch(() => {
+      console.log('Autoplay blocked');
+    });
+
+    audio.addEventListener('ended', () => {
+      const nextTrack = (currentTrack + 1) % MUSIC_TRACKS.length;
+      setCurrentTrack(nextTrack);
+    });
+
+    const volumeInterval = setInterval(() => {
+      setVolume(prev => {
+        const newVolume = Math.min(prev + 0.1, 1.5);
+        if (audioRef.current) {
+          audioRef.current.volume = Math.min(newVolume, 1);
+        }
+        return newVolume;
+      });
+    }, 60000);
+
+    return () => {
+      audio.pause();
+      audio.remove();
+      clearInterval(volumeInterval);
+    };
+  }, [currentTrack]);
 
   const generateVerificationCode = () => {
     return Math.random().toString(36).substring(2, 8).toUpperCase();
