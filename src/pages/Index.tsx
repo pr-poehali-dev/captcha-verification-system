@@ -50,6 +50,7 @@ export default function Index() {
   });
 
   const [checkCode, setCheckCode] = useState('');
+  const [enteredCode, setEnteredCode] = useState('');
   const [verifiedData, setVerifiedData] = useState<VerificationData | null>(null);
   const [verifications, setVerifications] = useState<VerificationData[]>([]);
 
@@ -89,13 +90,45 @@ export default function Index() {
     return Math.random().toString(36).substring(2, 8).toUpperCase();
   };
 
-  const handleContactVerification = () => {
+  const handleContactVerification = async () => {
     const code = Math.floor(100000 + Math.random() * 900000).toString();
-    toast({
-      title: "Код отправлен!",
-      description: `Проверочный код ${code} отправлен на ${formData.contact}`,
-    });
-    setStep(2);
+    
+    try {
+      const response = await fetch('https://functions.poehali.dev/527e4f05-b364-4900-8184-94230c600c55', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          contactType: formData.contactType,
+          contact: formData.contact,
+          code: code
+        })
+      });
+
+      const result = await response.json();
+
+      if (response.ok && result.success) {
+        toast({
+          title: "Код отправлен!",
+          description: `Проверочный код ${code} отправлен на ${formData.contact}`,
+        });
+        setFormData({ ...formData, verificationCode: code });
+        setStep(2);
+      } else {
+        toast({
+          title: "Ошибка отправки",
+          description: result.error || "Не удалось отправить код. Проверьте настройки.",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Ошибка сети",
+        description: "Не удалось связаться с сервером отправки кодов",
+        variant: "destructive"
+      });
+    }
   };
 
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -110,6 +143,15 @@ export default function Index() {
   };
 
   const handleSubmitVerification = () => {
+    if (enteredCode !== formData.verificationCode) {
+      toast({
+        title: "Неверный код!",
+        description: "Введённый код не совпадает с отправленным",
+        variant: "destructive"
+      });
+      return;
+    }
+
     const verificationCode = generateVerificationCode();
     const newVerification: VerificationData = {
       name: formData.name,
@@ -290,6 +332,8 @@ export default function Index() {
                       <Input
                         id="verificationCode"
                         placeholder="123456"
+                        value={enteredCode}
+                        onChange={(e) => setEnteredCode(e.target.value)}
                         className="bg-slate-700/50 border-purple-500/30 text-white text-center text-2xl tracking-widest"
                         maxLength={6}
                       />
@@ -371,7 +415,7 @@ export default function Index() {
                     <Button
                       onClick={handleSubmitVerification}
                       className="w-full bg-purple-600 hover:bg-purple-700"
-                      disabled={!formData.photo || (formData.company === 'films' && (!formData.movieName || !formData.movieDate || !formData.movieTime))}
+                      disabled={!formData.photo || !enteredCode || enteredCode.length !== 6 || (formData.company === 'films' && (!formData.movieName || !formData.movieDate || !formData.movieTime))}
                     >
                       <Icon name="CheckCircle" size={18} className="mr-2" />
                       Завершить верификацию
@@ -402,6 +446,7 @@ export default function Index() {
                     <Button
                       onClick={() => {
                         setStep(1);
+                        setEnteredCode('');
                         setFormData({
                           name: '',
                           age: '',

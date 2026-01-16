@@ -1,0 +1,32 @@
+{
+  "tests": [
+    {
+      "name": "Send email code",
+      "method": "POST",
+      "path": "/",
+      "body": {
+        "contactType": "email",
+        "contact": "test@example.com",
+        "code": "123456"
+      },
+      "expectedStatus": 200,
+      "expectedBody": {
+        "success": true
+      },
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Missing fields",
+      "method": "POST",
+      "path": "/",
+      "body": {
+        "contactType": "email"
+      },
+      "expectedStatus": 400,
+      "expectedBody": {
+        "error": "string"
+      },
+      "bodyMatcher": "partial"
+    }
+  ]
+}
