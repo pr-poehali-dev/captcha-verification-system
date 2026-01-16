@@ -51,6 +51,8 @@ export default function Index() {
 
   const [checkCode, setCheckCode] = useState('');
   const [enteredCode, setEnteredCode] = useState('');
+  const [adminPassword, setAdminPassword] = useState('');
+  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
   const [verifiedData, setVerifiedData] = useState<VerificationData | null>(null);
   const [verifications, setVerifications] = useState<VerificationData[]>([]);
 
@@ -109,9 +111,13 @@ export default function Index() {
       const result = await response.json();
 
       if (response.ok && result.success) {
+        const isDemo = result.message?.includes('Demo') || result.message?.includes('demo');
         toast({
           title: "Код отправлен!",
-          description: `Проверочный код ${code} отправлен на ${formData.contact}`,
+          description: isDemo 
+            ? `Демо-режим: ваш код ${code} (в реальном режиме придёт на ${formData.contact})`
+            : `Проверочный код ${code} отправлен на ${formData.contact}`,
+          duration: isDemo ? 10000 : 5000
         });
         setFormData({ ...formData, verificationCode: code });
         setStep(2);
@@ -173,6 +179,22 @@ export default function Index() {
       title: "Верификация завершена!",
       description: `Ваш код: ${verificationCode}`,
     });
+  };
+
+  const handleAdminLogin = () => {
+    if (adminPassword === '2026') {
+      setIsAdminAuthenticated(true);
+      toast({
+        title: "Доступ разрешён",
+        description: "Вы вошли в режим администратора",
+      });
+    } else {
+      toast({
+        title: "Неверный пароль",
+        description: "Попробуйте снова",
+        variant: "destructive"
+      });
+    }
   };
 
   const handleCheckCode = () => {
@@ -479,105 +501,158 @@ export default function Index() {
                   Проверка верификации
                 </CardTitle>
                 <CardDescription className="text-purple-200">
-                  Введите код для просмотра данных верификации
+                  {!isAdminAuthenticated ? 'Введите пароль администратора' : 'Введите код для просмотра данных верификации'}
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="checkCode" className="text-white">
-                      Код верификации
-                    </Label>
-                    <div className="flex gap-2">
-                      <Input
-                        id="checkCode"
-                        placeholder="ABC123"
-                        value={checkCode}
-                        onChange={(e) => setCheckCode(e.target.value)}
-                        className="bg-slate-700/50 border-purple-500/30 text-white uppercase"
-                        maxLength={6}
-                      />
-                      <Button
-                        onClick={handleCheckCode}
-                        className="bg-purple-600 hover:bg-purple-700"
-                        disabled={checkCode.length !== 6}
-                      >
-                        <Icon name="Search" size={18} />
-                      </Button>
+                {!isAdminAuthenticated ? (
+                  <div className="space-y-4 animate-fade-in">
+                    <div className="bg-purple-500/10 border border-purple-500/30 rounded-lg p-6 text-center">
+                      <Icon name="Lock" size={48} className="mx-auto text-purple-400 mb-4" />
+                      <h3 className="text-xl font-bold text-white mb-4">
+                        Доступ ограничен
+                      </h3>
+                      <p className="text-purple-200 mb-6">
+                        Для проверки кодов верификации необходим пароль администратора
+                      </p>
+                      
+                      <div className="space-y-4 max-w-sm mx-auto">
+                        <div className="space-y-2">
+                          <Label htmlFor="adminPassword" className="text-white">
+                            Пароль администратора
+                          </Label>
+                          <Input
+                            id="adminPassword"
+                            type="password"
+                            placeholder="Введите пароль"
+                            value={adminPassword}
+                            onChange={(e) => setAdminPassword(e.target.value)}
+                            onKeyDown={(e) => e.key === 'Enter' && adminPassword.length > 0 && handleAdminLogin()}
+                            className="bg-slate-700/50 border-purple-500/30 text-white"
+                          />
+                        </div>
+                        
+                        <Button
+                          onClick={handleAdminLogin}
+                          className="w-full bg-purple-600 hover:bg-purple-700"
+                          disabled={!adminPassword}
+                        >
+                          <Icon name="LogIn" size={18} className="mr-2" />
+                          Войти
+                        </Button>
+                      </div>
                     </div>
                   </div>
-
-                  {verifiedData && (
-                    <div className="space-y-4 animate-fade-in">
-                      <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-6">
-                        <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-                          <Icon name="UserCheck" size={24} />
-                          Данные верификации
-                        </h3>
-                        
-                        <div className="grid gap-3">
-                          <div className="flex justify-between items-center border-b border-purple-500/20 pb-2">
-                            <span className="text-purple-300">Имя:</span>
-                            <span className="text-white font-semibold">{verifiedData.name}</span>
-                          </div>
-                          
-                          <div className="flex justify-between items-center border-b border-purple-500/20 pb-2">
-                            <span className="text-purple-300">Возраст:</span>
-                            <span className="text-white font-semibold">{verifiedData.age} лет</span>
-                          </div>
-                          
-                          <div className="flex justify-between items-center border-b border-purple-500/20 pb-2">
-                            <span className="text-purple-300">
-                              {verifiedData.contactType === 'email' ? 'Email:' : 'Телефон:'}
-                            </span>
-                            <span className="text-white font-semibold">{verifiedData.contact}</span>
-                          </div>
-                          
-                          <div className="flex justify-between items-center border-b border-purple-500/20 pb-2">
-                            <span className="text-purple-300">Компания:</span>
-                            <span className="text-white font-semibold">
-                              {verifiedData.company === 'films' ? 'Кинокомпания' :
-                               verifiedData.company === 'retail' ? 'Розничная торговля' :
-                               verifiedData.company === 'finance' ? 'Финансы' : 'Другое'}
-                            </span>
-                          </div>
-
-                          {verifiedData.company === 'films' && (
-                            <div className="mt-4 p-4 bg-purple-500/10 rounded-lg space-y-2">
-                              <h4 className="text-white font-semibold flex items-center gap-2">
-                                <Icon name="Film" size={18} />
-                                Данные о фильме
-                              </h4>
-                              <div className="flex justify-between">
-                                <span className="text-purple-300">Название:</span>
-                                <span className="text-white">{verifiedData.movieName}</span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="text-purple-300">Дата:</span>
-                                <span className="text-white">{verifiedData.movieDate}</span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="text-purple-300">Время:</span>
-                                <span className="text-white">{verifiedData.movieTime}</span>
-                              </div>
-                            </div>
-                          )}
-                        </div>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="checkCode" className="text-white">
+                        Код верификации
+                      </Label>
+                      <div className="flex gap-2">
+                        <Input
+                          id="checkCode"
+                          placeholder="ABC123"
+                          value={checkCode}
+                          onChange={(e) => setCheckCode(e.target.value)}
+                          className="bg-slate-700/50 border-purple-500/30 text-white uppercase"
+                          maxLength={6}
+                        />
+                        <Button
+                          onClick={handleCheckCode}
+                          className="bg-purple-600 hover:bg-purple-700"
+                          disabled={checkCode.length !== 6}
+                        >
+                          <Icon name="Search" size={18} />
+                        </Button>
                       </div>
-
-                      <Button
-                        onClick={() => {
-                          setVerifiedData(null);
-                          setCheckCode('');
-                        }}
-                        variant="outline"
-                        className="w-full"
-                      >
-                        Проверить другой код
-                      </Button>
                     </div>
-                  )}
-                </div>
+
+                    {verifiedData && (
+                      <div className="space-y-4 animate-fade-in">
+                        <div className="bg-green-500/10 border border-green-500/30 rounded-lg p-6">
+                          <h3 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                            <Icon name="UserCheck" size={24} />
+                            Данные верификации
+                          </h3>
+                          
+                          <div className="grid gap-3">
+                            <div className="flex justify-between items-center border-b border-purple-500/20 pb-2">
+                              <span className="text-purple-300">Имя:</span>
+                              <span className="text-white font-semibold">{verifiedData.name}</span>
+                            </div>
+                            
+                            <div className="flex justify-between items-center border-b border-purple-500/20 pb-2">
+                              <span className="text-purple-300">Возраст:</span>
+                              <span className="text-white font-semibold">{verifiedData.age} лет</span>
+                            </div>
+                            
+                            <div className="flex justify-between items-center border-b border-purple-500/20 pb-2">
+                              <span className="text-purple-300">
+                                {verifiedData.contactType === 'email' ? 'Email:' : 'Телефон:'}
+                              </span>
+                              <span className="text-white font-semibold">{verifiedData.contact}</span>
+                            </div>
+                            
+                            <div className="flex justify-between items-center border-b border-purple-500/20 pb-2">
+                              <span className="text-purple-300">Компания:</span>
+                              <span className="text-white font-semibold">
+                                {verifiedData.company === 'films' ? 'Кинокомпания' :
+                                 verifiedData.company === 'retail' ? 'Розничная торговля' :
+                                 verifiedData.company === 'finance' ? 'Финансы' : 'Другое'}
+                              </span>
+                            </div>
+
+                            {verifiedData.company === 'films' && (
+                              <div className="mt-4 p-4 bg-purple-500/10 rounded-lg space-y-2">
+                                <h4 className="text-white font-semibold flex items-center gap-2">
+                                  <Icon name="Film" size={18} />
+                                  Данные о фильме
+                                </h4>
+                                <div className="flex justify-between">
+                                  <span className="text-purple-300">Название:</span>
+                                  <span className="text-white">{verifiedData.movieName}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-purple-300">Дата:</span>
+                                  <span className="text-white">{verifiedData.movieDate}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-purple-300">Время:</span>
+                                  <span className="text-white">{verifiedData.movieTime}</span>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        <Button
+                          onClick={() => {
+                            setVerifiedData(null);
+                            setCheckCode('');
+                          }}
+                          variant="outline"
+                          className="w-full"
+                        >
+                          Проверить другой код
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+
+        <div className="mt-8 text-center text-purple-300 text-sm animate-fade-in">
+          <Icon name="Lock" size={16} className="inline mr-2" />
+          Все данные защищены end-to-end шифрованием
+        </div>
+      </div>
+    </div>
+  );
+}
               </CardContent>
             </Card>
           </TabsContent>
